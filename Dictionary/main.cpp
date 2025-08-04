@@ -14,42 +14,45 @@ This project is about implementating a dictionary from in c++ using trie Data st
 int main()
 {
     Trie* obj = new Trie();
-    int n;
-    while (true)
-{
-    cout << "Enter the command" << endl;
-    cout << "1 -> insertion" << endl;
-    cout << "2 -> search" << endl;
-    cout << "0 -> exit" << endl;
+    ifstream fin("words.txt");
+    if (!fin.is_open()) {
+        cerr << "Error: Could not open word.txt" << endl;
+        return 1;
+    }
 
-    cin >> n;
-    
-    if (n == 0) {
-        break;  // 🛑 exit the loop
+    string word, meaning;
+    while (getline(fin, word)) {
+        if (getline(fin, meaning)) {
+
+
+            transform(word.begin(), word.end(), word.begin(), ::tolower);
+            transform(meaning.begin(), meaning.end(), meaning.begin(), ::tolower);
+
+            obj->insert(word, meaning);
+        } else {
+            cerr << "Warning: No meaning found for word: " << word << endl;
+        }
     }
-    else if (n == 1)
-    {
-        string word;
-        string meaning;
-        cout << "Enter the word" << endl;
-        cin >> word;
-         cin.ignore();
-          transform(word.begin(), word.end(), word.begin(), ::tolower);
-        cout << "Enter its meaning" << endl;
-        getline(cin, meaning);
-         transform(meaning.begin(), meaning.end(), meaning.begin(), ::tolower);
-        obj->insert(word, meaning);
+
+    fin.close();
+
+    // REPL for searching
+    string searchWord;
+    while (true) {
+        cout << "Enter word to search (or type '0'): ";
+        cin >> searchWord;
+        transform(searchWord.begin(), searchWord.end(), searchWord.begin(), ::tolower);
+        if (searchWord == "0") break;
+
+        string result = obj->search(searchWord);
+        if (result.empty()) {
+            cout << "Word not found.\n";
+        } else {
+            cout << "Meaning: " << result << "\n";
+        }
     }
-    else if (n == 2)
-    {
-        string searcher;
-        cout << "Enter the word" << endl;
-        cin >> searcher;
-         transform(searcher.begin(), searcher.end(), searcher.begin(), ::tolower);
-        cout << "meaning: " << obj->search(searcher) << endl;
-    }
-    else {
-        cout << "Invalid input. Please try again." << endl;
-    }
-}
+
+    delete obj;
+    return 0;
+   
 }
