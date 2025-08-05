@@ -1,6 +1,7 @@
 #include<bits/stdc++.h>
 #include <string>
 #include <cctype>
+#include "dictionary_data.h"
 #include "trie.cpp"
 using namespace std;
 /*
@@ -8,38 +9,35 @@ using namespace std;
 This project is about implementating a dictionary from in c++ using trie Data structure.
 */
 
+void printBanner() {
+    cout << R"(
+ __        __   _                            _         
+ \ \      / /__| | ___ ___  _ __ ___   ___  | |_ ___   
+  \ \ /\ / / _ \ |/ __/ _ \| '_ ` _ \ / _ \ | __/ _ \  
+   \ V  V /  __/ | (_| (_) | | | | | |  __/ | || (_) | 
+    \_/\_/ \___|_|\___\___/|_| |_| |_|\___|  \__\___/  
 
-
+                   CLI Dictionary!
+                   
+        Developer: https://github.com/Harsh-git98
+        Type a word to get its meaning instantly.
+        -----------------------------------------
+    )" << endl;
+    cout<<endl;
+}
 
 int main()
 {
     Trie* obj = new Trie();
-    ifstream fin("words.txt");
-    if (!fin.is_open()) {
-        cerr << "Error: Could not open word.txt" << endl;
-        return 1;
+    
+     for (int i = 0; i < dictionary_size; ++i) {
+        obj->insert(dictionary_entries[i].word, dictionary_entries[i].meaning);
     }
-
-    string word, meaning;
-    while (getline(fin, word)) {
-        if (getline(fin, meaning)) {
-
-
-            transform(word.begin(), word.end(), word.begin(), ::tolower);
-            transform(meaning.begin(), meaning.end(), meaning.begin(), ::tolower);
-
-            obj->insert(word, meaning);
-        } else {
-            cerr << "Warning: No meaning found for word: " << word << endl;
-        }
-    }
-
-    fin.close();
-
+    printBanner();
     // REPL for searching
     string searchWord;
     while (true) {
-        cout << "Enter word to search (or type '0'): ";
+        cout << "Enter word to search (or Exit: type '0'): ";
         cin >> searchWord;
         transform(searchWord.begin(), searchWord.end(), searchWord.begin(), ::tolower);
         if (searchWord == "0") break;
