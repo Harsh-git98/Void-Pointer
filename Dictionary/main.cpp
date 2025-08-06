@@ -35,12 +35,28 @@ int main()
     }
     printBanner();
     // REPL for searching
-    string searchWord;
+    
     while (true) {
         cout << "Enter word to search (or Exit: type '0'): ";
+        string searchWord;
         cin >> searchWord;
         transform(searchWord.begin(), searchWord.end(), searchWord.begin(), ::tolower);
         if (searchWord == "0") break;
+        bool f=0;
+        for(int i=0;i<searchWord.size();i++)
+        {
+            char s=searchWord[i];
+            if(!((s<='Z' &&s>='A') || (s<='z' && s>='a')))
+            {
+                cout <<"Invalid Word"<<endl;
+                f=1;
+                break;
+            }
+        }
+        if(f==1)
+        {
+            continue;
+        }
 
         string result = obj->search(searchWord);
         if (result.empty()) {
