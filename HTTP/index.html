@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HTTP Methods Demo</title>
+</head>
+<body>
+  <h1>HTTP Methods Demo</h1>
+
+  <!-- Normal GET link -->
+  <a href="http://localhost:8080">GET</a>
+  <br><br>
+
+  <!-- Other methods via JavaScript -->
+  <a href="" onclick="sendRequest('POST')">POST</a>
+  <br><br>
+  <a href="" onclick="sendRequest('PUT')">PUT</a>
+  <br><br>
+  <a href="" onclick="sendRequest('DELETE')">DELETE</a>
+
+  <script>
+    function sendRequest(method) {
+      fetch("http://localhost:8080", {
+        method: method,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: (method !== "GET" && method !== "DELETE") 
+              ? JSON.stringify({ message: method + " request sent" }) 
+              : null
+      })
+      .then(res => res.text())
+      .then(data => alert(method + " Response: " + data))
+      .catch(err => alert("Error: " + err));
+    }
+  </script>
+</body>
+</html>
