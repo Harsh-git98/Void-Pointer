@@ -1,6 +1,8 @@
-#include <iostream>
+#include <bits/stdc++.h>
 #include <string>
 #include <cstring>
+#include <vector>
+#include <thread>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -80,7 +82,28 @@ for (size_t i = 0; i < incoming.size(); i++) {
     }
 
 }
+void handle_client(int client_socket) {
+    char buffer[6000] = {0};
+    int valread = read(client_socket, buffer, sizeof(buffer)-1);
+    if (valread > 0) {
+        buffer[valread] = '\0';
+        std::string response;
+        handle_incoming_request(buffer, response);
 
+        if (response.empty()) {
+            response =
+                "HTTP/1.1 500 Internal Server Error\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: 21\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+                "Server error occurred";
+        }
+
+        send(client_socket, response.c_str(), response.size(), 0);
+    }
+    close(client_socket);
+}
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -113,39 +136,18 @@ int main() {
     }
 
     std::cout << "Server running on http://localhost:8080\n";
+    std::vector<std::thread> threads;
 
-    while(true) {
-        // Accept connection
-        new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-        if (new_socket < 0) {
+   while (true) {
+        int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+        if (client_socket < 0) {
             perror("accept");
-           continue;
+            continue;
         }
+        threads.emplace_back(std::thread(handle_client, client_socket));
+
        
-        // Read request (not fully parsed, just read & ignore)
-        char buffer[6000] = {0};
-        int valread = read(new_socket, buffer, sizeof(buffer)-1);
-if (valread <= 0) {
-    close(new_socket);
-    continue; // go back to listening
-}
-buffer[valread] = '\0';
-       
-        string response;
-        handle_incoming_request(buffer,response);
-        std::cout << "Received request:\n" << buffer << "\n";
-if (response.empty()) {
-    response =
-        "HTTP/1.1 500 Internal Server Error\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 21\r\n"
-        "Connection: close\r\n"
-        "\r\n"
-        "Server error occurred";
-}
-        send(new_socket, response.c_str(), response.size(), 0);
-        
-        close(new_socket);
+        threads.back().detach();
     }
 
     return 0;

@@ -6,89 +6,150 @@
     <title>Simple To-Do List</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-            margin: 0;
-        }
-        .container {
-            width: 100%;
-            max-width: 500px;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            border-radius: 8px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        #todo-form {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        #todo-input {
-            flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        #add-button {
-            padding: 10px 20px;
-            border: none;
-            background-color: #5cb85c;
-            color: white;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        #add-button:hover {
-            background-color: #4cae4c;
-        }
-        #todo-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .todo-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .todo-item:last-child {
-            border-bottom: none;
-        }
-        .todo-text {
-            flex-grow: 1;
-        }
-        .delete-button {
-            padding: 5px 10px;
-            border: none;
-            background-color: #d9534f;
-            color: white;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .delete-button:hover {
-            background-color: #c9302c;
-        }
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #000; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 500px;
+    padding: 25px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 30px rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.container:hover {
+    transform: translateY(-5px); /* Subtle hover effect */
+}
+
+h1 {
+    text-align: center;
+    color: #bb86fc; /* Purple accent color */
+    font-weight: 600;
+    margin-bottom: 25px;
+}
+P{
+    text-align:center;
+}
+
+#todo-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+#todo-input {
+    flex-grow: 1;
+    padding: 12px;
+    border: 1px solid #333;
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+#todo-input:focus {
+    border-color: #bb86fc;
+}
+
+#add-button {
+    padding: 12px 20px;
+    border: none;
+    background-color: #03dac6; /* Cyan accent color */
+    color: #121212;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#add-button:hover {
+    background-color: #018786;
+    transform: translateY(-2px);
+}
+
+#todo-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.todo-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #000;
+    transition: background-color 0.3s ease;
+}
+
+.todo-item:last-child {
+    border-bottom: none;
+}
+
+.todo-item:hover {
+    background-color: #2a2a2a;
+}
+
+.todo-text {
+    flex-grow: 1;
+    word-break: break-word; /* Prevents overflow */
+}
+
+.delete-button {
+    padding: 8px 12px;
+    border: none;
+    background-color: #cf6679; /* Red accent color */
+    color: #121212;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.delete-button:hover {
+    background-color: #b00020;
+    transform: translateY(-2px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .container {
+        border-radius: 0;
+        box-shadow: none;
+        padding: 15px;
+    }
+    
+    body {
+        padding: 0;
+        align-items: flex-start;
+    }
+}
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>To-Do List</h1>
+        <h1>To-Do List App</h1>
+        <p>Running on C++ HTTP Server</p>
         <form id="todo-form">
             <input type="text" id="todo-input" placeholder="Add a new task..." required>
             <button type="submit" id="add-button">Add</button>
         </form>
         <ul id="todo-list"></ul>
     </div>
-
+    
     <script>
     const form = document.getElementById('todo-form');
     const input = document.getElementById('todo-input');

@@ -1,7 +1,7 @@
 #include<bits/stdc++.h>
 using namespace std;
 
-vector<string> global ={"Learn C++","Build server"};
+vector<string> global ={"Learn C++","Build HTTP Server"};
 
 string escapeForJson(const string &s) {
     string out;

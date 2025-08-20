@@ -1,11 +1,111 @@
-#include <iostream>
-#include <string>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <cstring>
-
+#include <bits/stdc++.h>
+#include <string>
+#include <vector>
+#include <thread>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include<bits/stdc++.h>
+#include "request.cpp"
 #pragma comment(lib, "ws2_32.lib")
 
+void handle_REST(vector<string>& words, string body,string &response)
+{
+    // for(int i=0;i<words.size();i++)
+    // {
+    //     cout<<words[i]<<endl;
+    // }
+    // cout<<body<<endl;
+    if(words[0]=="GET")
+    {
+        handle_GET(words[1],response);
+    }
+     if(words[0]=="POST")
+    {
+        handle_POST(words[1],response,body);
+    }
+     if(words[0]=="PUT")
+    {
+        handle_PUT(words[1],response);
+    }
+     if(words[0]=="DELETE")
+    {
+        handle_DELETE(words[1],response);
+    }
+}
+void handle_incoming_request(char buffer[], string &response)
+{
+    std::stringstream ss(buffer);
+std::string line;
+std::vector<std::string> incoming;
+
+while (std::getline(ss, line)) {
+    if (!line.empty() && line.back() == '\r') {
+        line.pop_back();  // remove trailing \r
+    }
+    incoming.push_back(line);
+}
+
+   if (incoming.empty()) return;   
+
+    std::istringstream iss(incoming[0]);
+std::vector<std::string> words;
+std::string word;
+while (iss >> word) {
+    words.push_back(word);
+}
+
+
+
+   std::string body = "";
+for (size_t i = 0; i < incoming.size(); i++) {
+    if (incoming[i].empty()) { // blank line
+        // everything after is body
+        for (size_t j = i+1; j < incoming.size(); j++) {
+            body += incoming[j] + "\n";
+        }
+        break;
+    }
+}
+
+    handle_REST(words,body,response);
+    if (response.empty()) {
+        response =
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Type: text/html\r\n"
+            "Content-Length: 13\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            "<h1>404</h1>";
+    }
+
+}
+void handle_client(int client_socket) {
+    char buffer[6000] = {0};
+    int valread = read(client_socket, buffer, sizeof(buffer)-1);
+    if (valread > 0) {
+        buffer[valread] = '\0';
+        std::string response;
+        handle_incoming_request(buffer, response);
+
+        if (response.empty()) {
+            response =
+                "HTTP/1.1 500 Internal Server Error\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: 21\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+                "Server error occurred";
+        }
+
+        send(client_socket, response.c_str(), response.size(), 0);
+    }
+    close(client_socket);
+}
 int main() {
     WSADATA wsa;
     SOCKET server_fd, new_socket;
@@ -45,96 +145,19 @@ int main() {
 
     std::cout << "Server running on http://localhost:8080\n";
 
-    while (true) {
-        new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
-        if (new_socket == INVALID_SOCKET) {
-            std::cerr << "Accept failed\n";
-            break;
+     std::vector<std::thread> threads;
+
+   while (true) {
+        int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+        if (client_socket < 0) {
+            perror("accept");
+            continue;
         }
+        threads.emplace_back(std::thread(handle_client, client_socket));
 
-        char buffer[8192] = {0};
-        int bytes_received = recv(new_socket, buffer, sizeof(buffer)-1, 0);
-        if (bytes_received > 0) {
-            buffer[bytes_received] = '\0';
-            std::cout << "Received request:\n" << buffer << "\n";
-        }
-
-       std::string body = R"(Harsh Ranjan
-
- Howrah, West Bengal |  +91 980-159-8891 |  shriharshranjangupta@gmail.com
-  https://github.com/Harsh-git98 | https://www.linkedin.com/in/harshrjn/
-=====
-# Education
-B.Tech in Information Technology, IIEST Shibpur — CGPA: 8.18/10 (2022-2026)
-Higher Secondary (BSEB), H.D. Jain College — 89.6% (2021-2022)
-Secondary (CBSE), DAV Public School — 95.8% (2019-2020)
-
-=====
-
-Work Experience
-
-App Developer — Repromptt (Jun 2025 - Aug 2025)
-Built a production-ready mobile app (React Native, Express.js, MongoDB) deployed on Render for scaling to 100k+ users.
-Integrated RevenueCat + Stripe webhooks for subscription management.
-Designed authentication flows, telemetry, and REST APIs.
-
-Frontend Developer — Lightscline AI (Jun 2024 - Jul 2024)
-Rebuilt the company website with optimized performance, responsiveness, and modern UX.
-Implemented JavaScript interactions + CSS animations and improved cross-browser compatibility.
-
-Winter Research Intern — NIT Patna (Dec 2023 - Jan 2024)
-Researched EWMA algorithms for IoT heartbeat anomaly detection.
-Implemented multiple variants in Python (NumPy, Pandas) and validated tradeoffs on real datasets.
-
-=====
-
-Skills
-Languages: C++, C, JavaScript (ES6+), Python (Basic), SQL
-Frameworks: React.js, Node.js, Express.js, React Native, MongoDB
-Tech & Tools: MERN, GenAI (OpenAI API, LangChain), Git, Docker, REST APIs, Stripe, RevenueCat, Render
-Databases: MongoDB, MySQL
-Coursework: DSA, OS, DBMS, OOP, CN, ML
-
-=====
-
-Projects
-Research Paper Search Tool — ReactJS, MongoDB, FastAPI, Jupyter (KNN over embeddings for keyword-based retrieval).
-Splitkaro MVP — Hackathon project, React Native + Generative AI (Google Gemini for expense parsing).
-Trie Dictionary CLI App — C++ OOP project with efficient word lookups; packaged as .exe.
-
-=====
-
-Positions of Responsibility
-Assistant General Secretary, EDC (2023-Present)
-Technical Team Member, DEBSOC (2023-Present)
-Media Lead, CODEIIEST (2023-Present)
-
-=====
-
-Achievements
-LeetCode: 800+ solved (600+ Medium)
-Codeforces: Max Rating 1239 (Pupil)
-2nd Place: Instruo Hackathon (Sears India, 2023)
-3rd Place: Revelation Hackathon (2025)
-Top 1% IOQM Merit Certificate (2022)
-
-=====
-
-Extra-Curriculars
-Canva design, video editing, debating, basketball.
-)";
-
-    std::string response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: " + std::to_string(body.size()) + "\r\n"
-        "Connection: close\r\n"
-        "\r\n" +
-        body;
-        send(new_socket, response.c_str(), response.size(), 0);
-        closesocket(new_socket);
+       
+        threads.back().detach();
     }
-
     closesocket(server_fd);
     WSACleanup();
     return 0;
