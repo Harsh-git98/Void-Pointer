@@ -146,5 +146,36 @@ void handle_PUT(string route, string &response)
 
 void handle_DELETE(string route, string &response)
 {
+     cout<<"route: "<<route<<endl;
+    
+
+     if (route.rfind("/api", 0) == 0)
+     {
+        string ans="";
+        bool f=0;
+        for(int i=0;i<route.length();i++)
+        {
+            if(route[i]=='=')
+            {
+                f=1;
+            }
+            if(f==1)
+            {
+                if(route[i]<='9' && route[i]>='0')
+                ans+=route[i];
+            }
+        }
+        int index= stoi(ans);
+
+        global.erase(global.begin() + index);
+
+
+          response =
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: " "\r\n"
+        "Connection: close\r\n";
+
+     }
 
 }

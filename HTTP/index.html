@@ -90,106 +90,106 @@
     </div>
 
     <script>
-        const form = document.getElementById('todo-form');
-        const input = document.getElementById('todo-input');
-        const list = document.getElementById('todo-list');
+    const form = document.getElementById('todo-form');
+    const input = document.getElementById('todo-input');
+    const list = document.getElementById('todo-list');
 
-        const API_URL = '/api';
+    const API_URL = '/api';
 
-        // GET: Fetch all todos from the API
-        async function getTodos() {
-            try {
-                const response = await fetch(API_URL);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const todos = await response.json();
-                console.log(todos);
-                renderTodos(todos);
-            } catch (error) {
-                console.error('Error fetching todos:', error);
+    // GET: Fetch all todos from the API
+    async function getTodos() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
+            const todos = await response.json();
+            renderTodos(todos);
+        } catch (error) {
+            console.error('Error fetching todos:', error);
         }
+    }
 
-        // POST: Add a new todo
-        async function addTodo(text) {
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: text
-                });
-                if (!response.ok) {
-                    throw new Error('Failed to add todo');
-                }
-                getTodos();
-            } catch (error) {
-                console.error('Error adding todo:', error);
+    // POST: Add a new todo
+    async function addTodo(text) {
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'plain/text'
+                },
+                body: text
+            });
+            if (!response.ok) {
+                throw new Error('Failed to add todo');
             }
+            getTodos();
+        } catch (error) {
+            console.error('Error adding todo:', error);
         }
+    }
 
-        // DELETE: Delete a todo
-        async function deleteTodo(id) {
-            try {
-                const response = await fetch(API_URL + '?id=' + id, {
-                    method: 'DELETE'
-                });
-                if (!response.ok) {
-                    throw new Error('Failed to delete todo');
-                }
-                // If successful, remove the item from the DOM
-                document.querySelector(`li[data-id="${id}"]`).remove();
-            } catch (error) {
-                console.error('Error deleting todo:', error);
+    // DELETE: Delete a todo by index
+    async function deleteTodo(index) {
+        try {
+            const response = await fetch(`${API_URL}?index=${index}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete todo');
             }
+            getTodos(); // Refresh list after deletion
+        } catch (error) {
+            console.error('Error deleting todo:', error);
         }
+    }
 
-        // Handle form submission
-        form.addEventListener('submit', function(event) {
-            event.preventDefault();
-            const text = input.value.trim();
-            if (text) {
-                addTodo(text);
-                input.value = '';
-            }
-        });
-
-        // Handle delete button clicks
-        list.addEventListener('click', function(event) {
-            if (event.target.classList.contains('delete-button')) {
-                const idToDelete = event.target.closest('li').dataset.id;
-                deleteTodo(idToDelete);
-            }
-        });
-
-        // Render all todos to the DOM
-        function renderTodos(todos) {
-            list.innerHTML = ''; // Clear existing list
-            todos.forEach(todo => addTodoToDOM(todo));
+    // Handle form submission
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (text) {
+            addTodo(text);
+            input.value = '';
         }
+    });
 
-        // Create and add a single list item to the DOM
-        function addTodoToDOM(todo) {
-            const listItem = document.createElement('li');
-            listItem.classList.add('todo-item');
-            
-            const todoText = document.createElement('span');
-            todoText.classList.add('todo-text');
-            todoText.textContent = todo.text;
-
-            const deleteButton = document.createElement('button');
-            deleteButton.classList.add('delete-button');
-            deleteButton.textContent = 'Delete';
-
-            listItem.appendChild(todoText);
-            listItem.appendChild(deleteButton);
-            list.appendChild(listItem);
+    // Handle delete button clicks
+    list.addEventListener('click', function(event) {
+        if (event.target.classList.contains('delete-button')) {
+            const indexToDelete = event.target.closest('li').dataset.index;
+            deleteTodo(indexToDelete);
         }
+    });
 
-        // Initial fetch of todos on page load
-        document.addEventListener('DOMContentLoaded', getTodos);
-    </script>
+    // Render all todos to the DOM
+    function renderTodos(todos) {
+        list.innerHTML = ''; // Clear existing list
+        todos.forEach((todo, index) => addTodoToDOM(todo, index));
+    }
+
+    // Create and add a single list item to the DOM
+    function addTodoToDOM(todo, index) {
+        const listItem = document.createElement('li');
+        listItem.classList.add('todo-item');
+        listItem.dataset.index = index;   // store index as data attribute
+
+        const todoText = document.createElement('span');
+        todoText.classList.add('todo-text');
+        todoText.textContent = todo.text;
+
+        const deleteButton = document.createElement('button');
+        deleteButton.classList.add('delete-button');
+        deleteButton.textContent = 'Delete';
+
+        listItem.appendChild(todoText);
+        listItem.appendChild(deleteButton);
+        list.appendChild(listItem);
+    }
+
+    // Initial fetch of todos on page load
+    document.addEventListener('DOMContentLoaded', getTodos);
+</script>
+
 </body>
 </html>
