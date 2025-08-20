@@ -22,7 +22,7 @@ void handle_REST(vector<string>& words, string body,string &response)
     }
      if(words[0]=="POST")
     {
-        handle_POST(words[1],response);
+        handle_POST(words[1],response,body);
     }
      if(words[0]=="PUT")
     {
@@ -107,7 +107,7 @@ int main() {
     }
 
     // Start listening
-    if (listen(server_fd, 3) < 0) {
+    if (listen(server_fd, 4) < 0) {
         perror("listen");
         exit(EXIT_FAILURE);
     }
@@ -116,25 +116,33 @@ int main() {
 
     while(true) {
         // Accept connection
-       // cout<<"hello";
         new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
         if (new_socket < 0) {
             perror("accept");
-            exit(EXIT_FAILURE);
+           continue;
         }
        
         // Read request (not fully parsed, just read & ignore)
         char buffer[6000] = {0};
         int valread = read(new_socket, buffer, sizeof(buffer)-1);
-        if (valread <= 0) {
-            close(new_socket);
-            continue; // go back to listening
-        }
-        buffer[valread] = '\0';
+if (valread <= 0) {
+    close(new_socket);
+    continue; // go back to listening
+}
+buffer[valread] = '\0';
+       
         string response;
         handle_incoming_request(buffer,response);
-        //std::cout << "Received request:\n" << buffer << "\n";
-
+        std::cout << "Received request:\n" << buffer << "\n";
+if (response.empty()) {
+    response =
+        "HTTP/1.1 500 Internal Server Error\r\n"
+        "Content-Type: text/plain\r\n"
+        "Content-Length: 21\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "Server error occurred";
+}
         send(new_socket, response.c_str(), response.size(), 0);
         
         close(new_socket);

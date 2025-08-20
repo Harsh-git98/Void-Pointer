@@ -1,38 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>HTTP Methods Demo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple To-Do List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #todo-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        #todo-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #add-button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #5cb85c;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #add-button:hover {
+            background-color: #4cae4c;
+        }
+        #todo-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .todo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .todo-item:last-child {
+            border-bottom: none;
+        }
+        .todo-text {
+            flex-grow: 1;
+        }
+        .delete-button {
+            padding: 5px 10px;
+            border: none;
+            background-color: #d9534f;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .delete-button:hover {
+            background-color: #c9302c;
+        }
+    </style>
 </head>
 <body>
-  <h1>HTTP Methods Demo</h1>
+    <div class="container">
+        <h1>To-Do List</h1>
+        <form id="todo-form">
+            <input type="text" id="todo-input" placeholder="Add a new task..." required>
+            <button type="submit" id="add-button">Add</button>
+        </form>
+        <ul id="todo-list"></ul>
+    </div>
 
-  <!-- Normal GET link -->
-  <a href="http://localhost:8080">GET</a>
-  <br><br>
+    <script>
+        const form = document.getElementById('todo-form');
+        const input = document.getElementById('todo-input');
+        const list = document.getElementById('todo-list');
 
-  <!-- Other methods via JavaScript -->
-  <a href="" onclick="sendRequest('POST')">POST</a>
-  <br><br>
-  <a href="" onclick="sendRequest('PUT')">PUT</a>
-  <br><br>
-  <a href="" onclick="sendRequest('DELETE')">DELETE</a>
+        const API_URL = '/api';
 
-  <script>
-    function sendRequest(method) {
-      fetch("http://localhost:8080", {
-        method: method,
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: (method !== "GET" && method !== "DELETE") 
-              ? JSON.stringify({ message: method + " request sent" }) 
-              : null
-      })
-      .then(res => res.text())
-      .then(data => alert(method + " Response: " + data))
-      .catch(err => alert("Error: " + err));
-    }
-  </script>
+        // GET: Fetch all todos from the API
+        async function getTodos() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const todos = await response.json();
+                console.log(todos);
+                renderTodos(todos);
+            } catch (error) {
+                console.error('Error fetching todos:', error);
+            }
+        }
+
+        // POST: Add a new todo
+        async function addTodo(text) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: text
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to add todo');
+                }
+                getTodos();
+            } catch (error) {
+                console.error('Error adding todo:', error);
+            }
+        }
+
+        // DELETE: Delete a todo
+        async function deleteTodo(id) {
+            try {
+                const response = await fetch(API_URL + '?id=' + id, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to delete todo');
+                }
+                // If successful, remove the item from the DOM
+                document.querySelector(`li[data-id="${id}"]`).remove();
+            } catch (error) {
+                console.error('Error deleting todo:', error);
+            }
+        }
+
+        // Handle form submission
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const text = input.value.trim();
+            if (text) {
+                addTodo(text);
+                input.value = '';
+            }
+        });
+
+        // Handle delete button clicks
+        list.addEventListener('click', function(event) {
+            if (event.target.classList.contains('delete-button')) {
+                const idToDelete = event.target.closest('li').dataset.id;
+                deleteTodo(idToDelete);
+            }
+        });
+
+        // Render all todos to the DOM
+        function renderTodos(todos) {
+            list.innerHTML = ''; // Clear existing list
+            todos.forEach(todo => addTodoToDOM(todo));
+        }
+
+        // Create and add a single list item to the DOM
+        function addTodoToDOM(todo) {
+            const listItem = document.createElement('li');
+            listItem.classList.add('todo-item');
+            
+            const todoText = document.createElement('span');
+            todoText.classList.add('todo-text');
+            todoText.textContent = todo.text;
+
+            const deleteButton = document.createElement('button');
+            deleteButton.classList.add('delete-button');
+            deleteButton.textContent = 'Delete';
+
+            listItem.appendChild(todoText);
+            listItem.appendChild(deleteButton);
+            list.appendChild(listItem);
+        }
+
+        // Initial fetch of todos on page load
+        document.addEventListener('DOMContentLoaded', getTodos);
+    </script>
 </body>
 </html>
