@@ -1,15 +1,11 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <cstring>
-#include <bits/stdc++.h>
-#include <string>
+#include <iostream>
 #include <vector>
 #include <thread>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include<bits/stdc++.h>
+#include <string>
+#include <cstdlib> 
+#include <sstream>
 #include "request.cpp"
 #pragma comment(lib, "ws2_32.lib")
 
@@ -84,9 +80,9 @@ for (size_t i = 0; i < incoming.size(); i++) {
     }
 
 }
-void handle_client(int client_socket) {
+void handle_client(SOCKET client_socket) {
     char buffer[6000] = {0};
-    int valread = read(client_socket, buffer, sizeof(buffer)-1);
+    int valread = recv(client_socket, buffer, sizeof(buffer)-1, 0);
     if (valread > 0) {
         buffer[valread] = '\0';
         std::string response;
@@ -104,8 +100,10 @@ void handle_client(int client_socket) {
 
         send(client_socket, response.c_str(), response.size(), 0);
     }
-    close(client_socket);
+    closesocket(client_socket);
 }
+
+
 int main() {
     WSADATA wsa;
     SOCKET server_fd, new_socket;
@@ -144,20 +142,19 @@ int main() {
     }
 
     std::cout << "Server running on http://localhost:8080\n";
+    system("start http://localhost:8080");
 
-     std::vector<std::thread> threads;
+
+    
 
    while (true) {
-        int client_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-        if (client_socket < 0) {
-            perror("accept");
-            continue;
-        }
-        threads.emplace_back(std::thread(handle_client, client_socket));
-
-       
-        threads.back().detach();
+    SOCKET client_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen);
+    if (client_socket == INVALID_SOCKET) {
+        std::cerr << "accept failed: " << WSAGetLastError() << "\n";
+        continue;
     }
+       handle_client(client_socket);
+}
     closesocket(server_fd);
     WSACleanup();
     return 0;

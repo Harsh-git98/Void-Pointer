@@ -1,7 +1,7 @@
 #include<bits/stdc++.h>
 using namespace std;
 
-vector<string> global ={"Learn C++","Build HTTP Server"};
+vector<string> global;
 
 string escapeForJson(const string &s) {
     string out;
@@ -28,8 +28,71 @@ string escapeForJson(const string &s) {
     return out;
 }
 
+const std::string KEY = "HARSH"; // secret keyword
+
+// Encode using Vigenère cipher
+std::string encode(const std::string& text) {
+    std::string result = text;
+    int keyLen = KEY.length();
+    for (size_t i = 0, j = 0; i < result.length(); ++i) {
+        if (isalpha(result[i])) {
+            char base = islower(result[i]) ? 'a' : 'A';
+            int shift = toupper(KEY[j % keyLen]) - 'A';
+            result[i] = (result[i] - base + shift) % 26 + base;
+            ++j;
+        }
+    }
+    return result;
+}
+
+// Decode using Vigenère cipher
+std::string decode(const std::string& text) {
+    std::string result = text;
+    int keyLen = KEY.length();
+    for (size_t i = 0, j = 0; i < result.length(); ++i) {
+        if (isalpha(result[i])) {
+            char base = islower(result[i]) ? 'a' : 'A';
+            int shift = toupper(KEY[j % keyLen]) - 'A';
+            result[i] = (result[i] - base - shift + 26) % 26 + base;
+            ++j;
+        }
+    }
+    return result;
+}
+
+void fetchdata() {
+    std::ifstream file("save.txt");
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file\n";
+        return;
+    }
+
+    global.clear();
+    std::string line;
+    while (std::getline(file, line)) {
+        global.push_back(decode(line));  // decode while reading
+    }
+    file.close();
+}
+
+void pushdata() {
+    std::ofstream file("save.txt");
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file\n";
+        return;
+    }
+
+    for (int i = 0; i < global.size(); i++) {
+        file << encode(global[i]) << "\n"; // encode while writing
+    }
+
+    file.close();
+}
+
+
 string createjsonfile()
 {
+    fetchdata();
     string res = "[";
     for (size_t i = 0; i < global.size(); i++)
     {
@@ -123,7 +186,7 @@ void handle_POST(string route, string &response, string body)
 
        
         global.push_back(extracted);
-
+        pushdata();
          string json = createjsonfile();
         response =
         "HTTP/1.1 200 OK\r\n"
@@ -168,6 +231,7 @@ void handle_DELETE(string route, string &response)
         int index= stoi(ans);
 
         global.erase(global.begin() + index);
+        pushdata();
 
 
           response =
