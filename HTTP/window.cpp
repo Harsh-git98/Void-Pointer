@@ -86,6 +86,7 @@ void handle_client(SOCKET client_socket) {
     if (valread > 0) {
         buffer[valread] = '\0';
         std::string response;
+        cout<<buffer<<endl;
         handle_incoming_request(buffer, response);
 
         if (response.empty()) {
