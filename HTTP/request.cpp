@@ -1,4 +1,4 @@
-#include<bits/stdc++.h>
+#include <bits/stdc++.h>
 using namespace std;
 
 vector<string> global;
@@ -28,11 +28,11 @@ string escapeForJson(const string &s) {
     return out;
 }
 
-const std::string KEY = "HARSH"; // secret keyword
+const string KEY = "HARSH"; // secret keyword
 
 // Encode using Vigenère cipher
-std::string encode(const std::string& text) {
-    std::string result = text;
+string encode(const string &text) {
+    string result = text;
     int keyLen = KEY.length();
     for (size_t i = 0, j = 0; i < result.length(); ++i) {
         if (isalpha(result[i])) {
@@ -46,8 +46,8 @@ std::string encode(const std::string& text) {
 }
 
 // Decode using Vigenère cipher
-std::string decode(const std::string& text) {
-    std::string result = text;
+string decode(const string &text) {
+    string result = text;
     int keyLen = KEY.length();
     for (size_t i = 0, j = 0; i < result.length(); ++i) {
         if (isalpha(result[i])) {
@@ -61,24 +61,24 @@ std::string decode(const std::string& text) {
 }
 
 void fetchdata() {
-    std::ifstream file("save.txt");
+    ifstream file("save.txt");
     if (!file.is_open()) {
-        std::cerr << "Failed to open file\n";
+        cerr << "Failed to open file\n";
         return;
     }
 
     global.clear();
-    std::string line;
-    while (std::getline(file, line)) {
-        global.push_back(decode(line));  // decode while reading
+    string line;
+    while (getline(file, line)) {
+        global.push_back(decode(line)); // decode while reading
     }
     file.close();
 }
 
 void pushdata() {
-    std::ofstream file("save.txt");
+    ofstream file("save.txt");
     if (!file.is_open()) {
-        std::cerr << "Failed to open file\n";
+        cerr << "Failed to open file\n";
         return;
     }
 
@@ -89,13 +89,10 @@ void pushdata() {
     file.close();
 }
 
-
-string createjsonfile()
-{
+string createjsonfile() {
     fetchdata();
     string res = "[";
-    for (size_t i = 0; i < global.size(); i++)
-    {
+    for (size_t i = 0; i < global.size(); i++) {
         string safeText = escapeForJson(global[i]);
         res += "{ \"text\": \"" + safeText + "\" }";
         if (i != global.size() - 1) {
@@ -103,143 +100,120 @@ string createjsonfile()
         }
     }
     res += "]";
-    cout<<res<<endl;
+    cout << res << endl;
     return res;
 }
 
-
-std::string loadFile(const std::string& filename) {
-    std::ifstream file(filename);
+string loadFile(const string &filename) {
+    ifstream file(filename);
     if (!file.is_open()) {
         return "<h1>404 Not Found</h1>";
     }
 
-    std::stringstream buffer;
+    stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
 }
 
-void handle_GET(string route, string &response)
-{
-    cout<<"route: "<<route<<endl;
-    // DESIGNING ROUTING 
-    if(route=="/")
-    {
-          string html = loadFile("index.html");
-          response =
+void handle_GET(string route, string &response) {
+    cout << "route: " << route << endl;
+
+    // DESIGNING ROUTING
+    if (route == "/") {
+        string html = loadFile("index.html");
+        response =
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/html\r\n"
-            "Content-Length: " + std::to_string(html.size()) + "\r\n"
+            "Content-Length: " + to_string(html.size()) + "\r\n"
             "Connection: close\r\n"
             "\r\n" +
             html;
 
-    }
-    else if(route=="/api")
-    {
+    } else if (route == "/api") {
         string json = createjsonfile();
         response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: " + std::to_string(json.size()) + "\r\n"
-        "Connection: close\r\n"
-        "\r\n" +
-        json;
-    }
-    else if(route=="/favicon.ico") {
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: " + to_string(json.size()) + "\r\n"
+            "Connection: close\r\n"
+            "\r\n" +
+            json;
+
+    } else if (route == "/favicon.ico") {
         response =
-        "HTTP/1.1 204 No Content\r\n"
-        "Connection: close\r\n\r\n";
+            "HTTP/1.1 204 No Content\r\n"
+            "Connection: close\r\n\r\n";
         return;
-    }
-    else{
+
+    } else {
         string html = loadFile("not.html");
-          response =
+        response =
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/html\r\n"
-            "Content-Length: " + std::to_string(html.size()) + "\r\n"
+            "Content-Length: " + to_string(html.size()) + "\r\n"
             "Connection: close\r\n"
             "\r\n" +
             html;
     }
-    
 }
 
+void handle_POST(string route, string &response, string body) {
+    cout << "route: " << route << endl;
+    cout << "body: " << body << endl;
 
-void handle_POST(string route, string &response, string body)
-{
-    cout<<"route: "<<route<<endl;
-    cout<<"body: "<<body<<endl;
-    if (route == "/api")
-    {
+    if (route == "/api") {
         string extracted = body;
 
-       
-        if (!extracted.empty() && extracted.front() == '"' && extracted.back() == '"')
-        {
+        if (!extracted.empty() && extracted.front() == '"' && extracted.back() == '"') {
             extracted = extracted.substr(1, extracted.size() - 2);
         }
-        if(extracted.back()=='\n' ||extracted.back()=='\r')
-        {
+        if (!extracted.empty() && (extracted.back() == '\n' || extracted.back() == '\r')) {
             extracted.pop_back();
         }
 
-       
         global.push_back(extracted);
         pushdata();
-         string json = createjsonfile();
+
+        string json = createjsonfile();
         response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: " + std::to_string(json.size()) + "\r\n"
-        "Connection: close\r\n"
-        "\r\n" +
-        json;
-        
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: " + to_string(json.size()) + "\r\n"
+            "Connection: close\r\n"
+            "\r\n" +
+            json;
     }
-
 }
 
-
-void handle_PUT(string route, string &response)
-{
-
+void handle_PUT(string route, string &response) {
+    // Placeholder for future logic
 }
 
+void handle_DELETE(string route, string &response) {
+    cout << "route: " << route << endl;
 
-void handle_DELETE(string route, string &response)
-{
-     cout<<"route: "<<route<<endl;
-    
-
-     if (route.rfind("/api", 0) == 0)
-     {
-        string ans="";
-        bool f=0;
-        for(int i=0;i<route.length();i++)
-        {
-            if(route[i]=='=')
-            {
-                f=1;
+    if (route.rfind("/api", 0) == 0) {
+        string ans = "";
+        bool f = 0;
+        for (int i = 0; i < route.length(); i++) {
+            if (route[i] == '=') {
+                f = 1;
             }
-            if(f==1)
-            {
-                if(route[i]<='9' && route[i]>='0')
-                ans+=route[i];
+            if (f == 1) {
+                if (route[i] >= '0' && route[i] <= '9')
+                    ans += route[i];
             }
         }
-        int index= stoi(ans);
+        int index = stoi(ans);
 
         global.erase(global.begin() + index);
         pushdata();
 
-
-          response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: " "\r\n"
-        "Connection: close\r\n";
-
-     }
-
+        response =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: "
+            "\r\n"
+            "Connection: close\r\n";
+    }
 }
