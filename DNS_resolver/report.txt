@@ -1,0 +1,48 @@
+1. How the Program Works
+
+The program prompts the user to enter either a service name (e.g., "http", "ftp") or a port number (e.g., 80, 443).
+
+If the input is alphabetic (not numeric), the program assumes it is a service name and calls getservbyname().
+
+If the input is numeric, it treats it as a port number and calls getservbyport().
+
+The program then displays:
+
+Official service name
+
+Aliases (if available)
+
+Port number (converted from network byte order to host order using ntohs())
+
+Protocol used (e.g., TCP, UDP)
+
+Error handling is implemented to print a clear message if resolution fails.
+
+2. Functions Used
+
+getservbyname(const char *name, const char *proto)
+Resolves a service name (like "http") into a servent structure that contains:
+
+s_name → Official service name
+
+s_aliases → List of alias names
+
+s_port → Port number (in network byte order)
+
+s_proto → Protocol ("tcp" or "udp")
+
+getservbyport(int port, const char *proto)
+Resolves a port number into the corresponding service name, aliases, port, and protocol. The port must be passed in network byte order using htons().
+
+Both functions rely on the system’s /etc/services database (or equivalent on non-Linux systems).
+
+3. Challenges and Solutions
+
+Byte order mismatch:
+s_port in the servent structure is in network byte order. The solution was to convert it to host byte order using ntohs() before printing.
+
+Protocol ambiguity (TCP/UDP):
+A service might exist under TCP or UDP. The program first attempts resolution with "tcp", and if it fails, retries with "udp".
+
+Error handling:
+If the input cannot be resolved (unknown service name or port number), the program prints a descriptive error message instead of crashing.
