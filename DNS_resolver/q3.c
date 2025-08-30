@@ -19,7 +19,7 @@ void resolve_name_to_address(const char *hostname) {
         fprintf(stderr, "Error: %s\n", gai_strerror(status));
         return;
     }
-
+scm-history-item:%5Cworkspaces%5Cnosql-from-scratch?%7B%22repositoryId%22%3A%22scm0%22%2C%22historyItemId%22%3A%223d63034a89aabefa6fdd0d831047383aab66e9a8%22%2C%22historyItemParentId%22%3A%229d8a9012fadfb5c90eb0ae7050a57fc4d3b1f5c9%22%2C%22historyItemDisplayId%22%3A%223d63034%22%7D
     printf("\nResolved Address(es) for %s:\n", hostname);
 
     for (p = res; p != NULL; p = p->ai_next) {

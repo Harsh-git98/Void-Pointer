@@ -49,20 +49,24 @@ int main() {
             continue;
         }
 
-        char buffer[4096] = {0};
+        char buffer[3000] = {0};
         int valread = read(client_socket, buffer, sizeof(buffer) - 1);
 
         cout << buffer << endl;
 
-        string response =
-            "HTTP/1.1 500 Internal Server Error\r\n"
-            "Content-Type: text/plain\r\n"
-            "Content-Length: 21\r\n"
-            "Connection: close\r\n"
-            "\r\n"
-            "Server error occurred";
+        string body = "<h1>Your C++ server is live and running</h1>";
 
+        string response =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "Content-Length: " + to_string(body.size()) + "\r\n"
+            "Connection: close\r\n"
+            "\r\n" +
+            body;
+
+            cout<<response<<endl;
         send(client_socket, response.c_str(), response.size(), 0);
+
 
         close(client_socket);
     }
