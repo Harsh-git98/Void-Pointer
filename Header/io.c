@@ -1,122 +1,113 @@
-#include "io.h"
 
-typedef unsigned long size_t;
+typedef __builtin_va_list va_list;
+#define va_start(ap, last) __builtin_va_start(ap, last)
+#define va_arg(ap, type)   __builtin_va_arg(ap, type)
+#define va_end(ap)         __builtin_va_end(ap)
 
-int string_len(const char *s) {
+
+static long sys_write(int fd, const void *buf, unsigned long count) {
+    long ret;
+    asm volatile("syscall"
+                 : "=a"(ret)
+                 : "a"(1), "D"(fd), "S"(buf), "d"(count)
+                 : "rcx", "r11", "memory");
+    return ret;
+}
+
+static long sys_read(int fd, void *buf, unsigned long count) {
+    long ret;
+    asm volatile("syscall"
+                 : "=a"(ret)
+                 : "a"(0), "D"(fd), "S"(buf), "d"(count)
+                 : "rcx", "r11", "memory");
+    return ret;
+}
+
+
+static void print_int(int num) {
+    char buf[32];
     int i = 0;
-    while (s[i]) i++;
-    return i;
-}
-
-void integer_to_ascii(int n, char *buf) {
-    char tmp[20];
-    int i = 0, j;
-    int neg = (n < 0);
-    if (neg) n = -n;
-    do {
-        tmp[i++] = (n % 10) + '0';
-        n /= 10;
-    } while (n > 0);
-    if (neg) tmp[i++] = '-';
-    for (j = 0; j < i; j++) buf[j] = tmp[i - j - 1];
-    buf[i] = '\0';
-}
-
-int ascii_to_integer(const char *s) {
-    int num = 0, neg = 0;
-    if (*s == '-') { neg = 1; s++; }
-    while (*s >= '0' && *s <= '9') {
-        num = num * 10 + (*s - '0');
-        s++;
+    if (num == 0) {
+        buf[i++] = '0';
+    } else {
+        if (num < 0) {
+            sys_write(1, "-", 1);
+            num = -num;
+        }
+        char tmp[32];
+        int j = 0;
+        while (num > 0) {
+            tmp[j++] = '0' + (num % 10);
+            num /= 10;
+        }
+        while (j > 0) buf[i++] = tmp[--j];
     }
-    return neg ? -num : num;
+    sys_write(1, buf, i);
 }
 
-
-long system_write(int fd, const void *buf, size_t count)
-{
-    long ret;
-    asm volatile (
-        "movl $4, %%eax;"     // syscall: sys_write
-        "movl %1, %%ebx;"
-        "movl %2, %%ecx;"
-        "movl %3, %%edx;"
-        "int $0x80;"
-        "movl %%eax, %0;"
-        : "=r"(ret) : "r"(fd), "r"(buf), "r"(count)
-        : "eax","ebx","ecx","edx"
-    );
-    return ret;
+static int read_int() {
+    char buf[32];
+    int len = sys_read(0, buf, sizeof(buf));
+    int num = 0, i = 0, sign = 1;
+    if (buf[0] == '-') { sign = -1; i++; }
+    for (; i < len && buf[i] >= '0' && buf[i] <= '9'; i++) {
+        num = num * 10 + (buf[i] - '0');
+    }
+    return num * sign;
 }
 
-long system_read(int fd, void *buf, size_t count) {
-    long ret;
-    asm volatile (
-        "movl $3, %%eax;"     // syscall: sys_read
-        "movl %1, %%ebx;"
-        "movl %2, %%ecx;"
-        "movl %3, %%edx;"
-        "int $0x80;"
-        "movl %%eax, %0;"
-        : "=r"(ret) : "r"(fd), "r"(buf), "r"(count)
-        : "eax","ebx","ecx","edx"
-    );
-    return ret;
-}
+int print_func(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
 
-
-int print_func(const char *fmt ,...)
-{
-    for (int i = 0; fmt[i]; i++) {
-        if (fmt[i] == '%' && fmt[i+1]) {
-            i++;
-            if (fmt[i] == 's') {
-                char *str = *arg++;
-                count += sys_write(1, str, string_len(str));
-            } else if (fmt[i] == 'd') {
-                int num = *(int*)arg++;
-                char buf[32];
-                integer_to_ascii(num, buf);
-                count += sys_write(1, buf, string_len(buf));
-            } else if (fmt[i] == 'c') {
-                char c = (char)(long)*arg++;
-                count += sys_write(1, &c, 1);
+    for (const char *p = fmt; *p; p++) {
+        if (*p == '%') {
+            p++;
+            if (*p == 'd') {
+                int val = va_arg(args, int);
+                print_int(val);
+            } else if (*p == 's') {
+                char *str = va_arg(args, char*);
+                while (*str) sys_write(1, str++, 1);
+            } else if (*p == 'c') {
+                char c = (char)va_arg(args, int);
+                sys_write(1, &c, 1);
+            } else if (*p == '%') {
+                sys_write(1, "%", 1);
             }
         } else {
-            sys_write(1, &fmt[i], 1);
-            count++;
+            sys_write(1, p, 1);
         }
     }
-    return count;
+
+    va_end(args);
+    return 0;
 }
 
-int scanf(const char *fmt, ...) {
-    char buffer[1024];
-    int n = sys_read(0, buffer, 1024);
-    if (n <= 0) return -1;
-    buffer[n] = '\0';
+int scan_func(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
 
-    const char **arg = (const char**)(&fmt) + 1;
-    char *p = buffer;
-
-    for (int i = 0; fmt[i]; i++) {
-        if (fmt[i] == '%' && fmt[i+1]) {
-            i++;
-            while (*p==' ' || *p=='\n') p++;
-            if (fmt[i] == 'd') {
-                int *num = (int*)*arg++;
-                *num = ascii_to_integer(p);
-                while ((*p >= '0' && *p <= '9') || *p=='-') p++;
-            } else if (fmt[i] == 's') {
-                char *str = (char*)*arg++;
-                int j=0;
-                while (*p && *p!=' ' && *p!='\n') str[j++] = *p++;
-                str[j] = '\0';
-            } else if (fmt[i] == 'c') {
-                char *c = (char*)*arg++;
-                *c = *p++;
+    for (const char *p = fmt; *p; p++) {
+        if (*p == '%') {
+            p++;
+            if (*p == 'd') {
+                int *out = va_arg(args, int*);
+                *out = read_int();
+            } else if (*p == 's') {
+                char *out = va_arg(args, char*);
+                int len = sys_read(0, out, 100);
+                if (len > 0) {
+                    if (out[len-1] == '\n') out[len-1] = '\0';
+                    else out[len] = '\0';
+                }
+            } else if (*p == 'c') {
+                char *out = va_arg(args, char*);
+                sys_read(0, out, 1);
             }
         }
     }
+
+    va_end(args);
     return 0;
 }
