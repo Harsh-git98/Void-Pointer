@@ -1,0 +1,10 @@
+{
+    &a;
+    &b;
+    #Enter two numbers:
+    >>@a;
+    >>@b;
+    @a=@a+@b;
+    #The sum is:
+    <<@a;
+}

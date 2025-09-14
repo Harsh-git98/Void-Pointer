@@ -1,0 +1,14 @@
+{
+    &f;
+    &c;
+
+    #Enter temperature in Fahrenheit:
+    >>@f;
+
+    @c=@f-32;
+    @c=@c*5;
+    @c=@c/9;
+
+    #Temperature in Celsius is:
+    <<@c;
+}
