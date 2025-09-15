@@ -86,42 +86,31 @@ long parse_operand(const char **ptr) {
     }
 }
 
-// Evaluates a term (multiplication and division)
-long evaluate_term(const char **ptr) {
-    long result = parse_operand(ptr);
-    while (isspace(**ptr)) (*ptr)++;
-    while (**ptr == '*' || **ptr == '/') {
-        char op = **ptr;
-        (*ptr)++;
-        long next_val = parse_operand(ptr);
-        if (op == '*') {
-            result *= next_val;
-        } else if (op == '/') {
-            if (next_val == 0) {
-                fprintf(stderr, "Error: Division by zero.\n");
-                exit(1);
-            }
-            result /= next_val;
-        }
-        while (isspace(**ptr)) (*ptr)++;
-    }
-    return result;
-}
-
-// Evaluates an expression (addition and subtraction)
+// Evaluate single operator expressions (a + b, a * b, just a, etc.)
 long evaluate_expression(const char **ptr) {
-    long result = evaluate_term(ptr);
+    long left = parse_operand(ptr);
+
+    // skip spaces
     while (isspace(**ptr)) (*ptr)++;
-    while (**ptr == '+' || **ptr == '-') {
+
+    if (**ptr == '+' || **ptr == '-' || **ptr == '*' || **ptr == '/') {
         char op = **ptr;
-        (*ptr)++;
-        long next_val = evaluate_term(ptr);
-        if (op == '+') {
-            result += next_val;
-        } else if (op == '-') {
-            result -= next_val;
+        (*ptr)++; // consume operator
+        long right = parse_operand(ptr);
+
+        switch (op) {
+            case '+': return left + right;
+            case '-': return left - right;
+            case '*': return left * right;
+            case '/':
+                if (right == 0) {
+                    fprintf(stderr, "Error: Division by zero.\n");
+                    exit(1);
+                }
+                return left / right;
         }
-        while (isspace(**ptr)) (*ptr)++;
     }
-    return result;
+
+    // just a single operand, no operator
+    return left;
 }
