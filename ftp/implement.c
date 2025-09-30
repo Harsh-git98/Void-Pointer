@@ -15,6 +15,9 @@
 #define AUTH_USERNAME "User"
 #define AUTH_PASSWORD "pass"
 
+char client_ip[64];
+int client_data_port = 0;
+
 void send_response(int client_socket, const char *message) {
     char buffer[512];
     snprintf(buffer, sizeof(buffer), "%s\r\n", message);
@@ -62,7 +65,48 @@ int authenticate_user(int client_socket, char **username) {
     }
 }
 
-// === FTP Command Handlers ===
+
+
+void handle_port(int client_socket, const char *arg) {
+    int h1,h2,h3,h4,p1,p2;
+    if (sscanf(arg, "%d,%d,%d,%d,%d,%d", 
+               &h1,&h2,&h3,&h4,&p1,&p2) != 6) {
+        send_response(client_socket, "501 Syntax error in parameters.");
+        return;
+    }
+
+    snprintf(client_ip, sizeof(client_ip), "%d.%d.%d.%d", h1,h2,h3,h4);
+    client_data_port = p1 * 256 + p2;
+
+    send_response(client_socket, "200 PORT command successful.");
+}
+
+
+// Accept data connection
+int open_data_connection() {
+    int data_fd;
+    struct sockaddr_in data_addr;
+
+    if (client_data_port == 0) return -1;
+
+    data_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (data_fd < 0) return -1;
+
+    memset(&data_addr, 0, sizeof(data_addr));
+    data_addr.sin_family = AF_INET;
+    data_addr.sin_port = htons(client_data_port);
+    inet_pton(AF_INET, client_ip, &data_addr.sin_addr);
+
+    if (connect(data_fd, (struct sockaddr *)&data_addr, sizeof(data_addr)) < 0) {
+        perror("Data connection failed");
+        close(data_fd);
+        return -1;
+    }
+    return data_fd;
+}
+
+
+// === Command Handlers ===
 void handle_pwd(int client_socket) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
@@ -81,60 +125,89 @@ void handle_cwd(int client_socket, const char *path) {
         send_response(client_socket, "550 Failed to change directory.");
 }
 
+
+
 void handle_list(int client_socket) {
-    // NOTE: Proper LIST needs data channel, simplified here
+    int data_fd = open_data_connection();
+    if (data_fd < 0) {
+        send_response(client_socket, "425 Can't open data connection.");
+        return;
+    }
+    send_response(client_socket, "150 Opening data connection for LIST");
+
     DIR *dir = opendir(".");
     if (!dir) {
         send_response(client_socket, "550 Failed to list directory.");
+        close(data_fd);
+       // data_fd = -1;
         return;
     }
 
     struct dirent *entry;
-    send_response(client_socket, "150 Opening ASCII mode data connection for file list.");
     while ((entry = readdir(dir)) != NULL) {
         char line[256];
-        snprintf(line, sizeof(line), "%s\r\n", entry->d_name);
-        send(client_socket, line, strlen(line), 0);
+        snprintf(line, sizeof(line), "- %s\r\n", entry->d_name);
+        send(data_fd, line, strlen(line), 0);
     }
     closedir(dir);
-    send_response(client_socket, "226 Directory send OK.");
+    close(data_fd);
+    send_response(client_socket, "Transfer complete.");
 }
 
+
+
 void handle_retr(int client_socket, const char *filename) {
+    int data_fd = open_data_connection();
+    if (data_fd < 0) {
+        send_response(client_socket, "425 Can't open data connection.");
+        return;
+    }
     int fd = open(filename, O_RDONLY);
     if (fd < 0) {
         send_response(client_socket, "550 File not found.");
+        close(data_fd);
+      
         return;
     }
-
-    send_response(client_socket, "150 Opening data connection for file transfer.");
+    send_response(client_socket, "150 Opening data connection for RETR");
     char buffer[1024];
     ssize_t n;
     while ((n = read(fd, buffer, sizeof(buffer))) > 0) {
-        send(client_socket, buffer, n, 0);
+        send(data_fd, buffer, n, 0);
     }
     close(fd);
+    close(data_fd);
+    
     send_response(client_socket, "226 Transfer complete.");
 }
 
 void handle_stor(int client_socket, const char *filename) {
+    int data_fd = open_data_connection();
+    if (data_fd < 0) {
+        send_response(client_socket, "425 Can't open data connection.");
+        return;
+    }
     int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) {
         send_response(client_socket, "550 Cannot create file.");
+        close(data_fd);
+       // data_fd = -1;
         return;
     }
 
-    send_response(client_socket, "150 Opening data connection for file upload.");
+    send_response(client_socket, "150 Opening data connection for STOR");
     char buffer[1024];
     ssize_t n;
-    while ((n = recv(client_socket, buffer, sizeof(buffer), MSG_DONTWAIT)) > 0) {
+    while ((n = recv(data_fd, buffer, sizeof(buffer), 0)) > 0) {
         write(fd, buffer, n);
     }
     close(fd);
+    close(data_fd);
+   
     send_response(client_socket, "226 Upload complete.");
 }
 
-// === Main Command Loop ===
+// === Main Command Loop (Active Mode, strict commands) ===
 void command_loop(int client_socket) {
     char command_buffer[MAX_COMMAND_LEN];
     ssize_t bytes_read;
@@ -153,17 +226,22 @@ void command_loop(int client_socket) {
         if (strncasecmp(cmd_line, "PWD", 3) == 0) {
             handle_pwd(client_socket);
         }
-        else if (strncasecmp(cmd_line, "CWD ", 4) == 0) {
-            handle_cwd(client_socket, cmd_line + 4);
+        else if (strncasecmp(cmd_line, "CWD", 3) == 0) {
+            char *arg = cmd_line + 3;
+            while (*arg == ' ') arg++;  // skip spaces
+            if (*arg)
+                handle_cwd(client_socket, arg);
+            else
+                send_response(client_socket, "501 Missing directory name.");
         }
-        else if (strncasecmp(cmd_line, "LIST", 4) == 0) {
+        else if (strncasecmp(cmd_line, "PORT ", 5) == 0) {
+            handle_port(client_socket, cmd_line + 5);
+        }
+        else if (strncasecmp(cmd_line, "LIST", 4) == 0 || strncasecmp(cmd_line, "LS", 2) == 0) {
             handle_list(client_socket);
         }
         else if (strncasecmp(cmd_line, "RETR ", 5) == 0) {
             handle_retr(client_socket, cmd_line + 5);
-        }
-        else if (strncasecmp(cmd_line, "STOR ", 5) == 0) {
-            handle_stor(client_socket, cmd_line + 5);
         }
         else if (strncasecmp(cmd_line, "TYPE ", 5) == 0) {
             send_response(client_socket, "200 Type set to Binary.");
@@ -172,16 +250,18 @@ void command_loop(int client_socket) {
             send_response(client_socket, "215 UNIX Type: L8");
         }
         else if (strncasecmp(cmd_line, "QUIT", 4) == 0) {
-            send_response(client_socket, "221 Conection Closed");
+            send_response(client_socket, "221 Goodbye.");
             break;
         }
         else {
-            send_response(client_socket, "500 Syntax error, command unrecognized.");
+            // Any other command is explicitly rejected
+            send_response(client_socket, "502 Command not implemented.");
         }
     }
 }
 
-// === Handle Client Session ===
+
+// === Handle Client ===
 void handle_client(int client_socket) {
     char *username = NULL;
     int authenticated = authenticate_user(client_socket, &username);

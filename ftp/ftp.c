@@ -12,11 +12,6 @@
 #define AUTH_USERNAME "User"
 #define AUTH_PASSWORD "pass"
 
-
-
-
-
-
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;

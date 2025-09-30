@@ -1,0 +1,120 @@
+How FTP works — detailed overview
+Protocol fundamentals
+
+FTP (File Transfer Protocol) is an application-layer protocol defined originally in RFC 959. It uses two separate TCP connections between the client and server:
+
+Control connection (command channel) — persistent TCP connection where client sends ASCII commands and server replies with numeric response codes + text (e.g., 220, 331, 230, 226).
+
+Data connection — used only for transferring file contents or directory listings. It is opened and closed per transfer (historically per command that needs data).
+
+Control connection is usually on TCP port 21 (requires root to bind <1024). For experimentation we use a higher port (e.g., 2121).
+
+Modes for establishing data connection
+
+Two main modes:
+
+Active mode (PORT)
+
+Client tells the server an address and port to connect to by sending PORT h1,h2,h3,h4,p1,p2.
+
+Server connects from its ephemeral port to client’s given host:port to establish the data connection.
+
+Problems: client behind NAT/firewall -> server cannot reach client. Less commonly used today.
+
+Passive mode (PASV)
+
+Client sends PASV. Server opens a listening TCP socket on some host/port and replies with 227 Entering Passive Mode (h1,h2,h3,h4,p1,p2).
+
+The client connects to that server port to establish the data connection. This works better with client NATs but requires server to accept connections on chosen ephemeral ports and may require firewall rules.
+
+Modern clients prefer Passive mode.
+
+Control commands — the common ones
+
+USER <username> — provide username.
+
+PASS <password> — provide password (plaintext over the control connection).
+
+SYST — server OS type.
+
+PWD — print working directory.
+
+CWD <path> — change working directory.
+
+TYPE A|I — set ASCII mode (A) or binary/image (I). Binary is used for raw bytes.
+
+PASV — enter passive mode (server listens; replies with IP/port).
+
+PORT h1,...,p2 — active mode request (server connects to client).
+
+LIST [path] — list directory contents (sends listing over data connection).
+
+RETR <filename> — retrieve (download) file from server to client.
+
+STOR <filename> — store (upload) file from client to server.
+
+QUIT — close session.
+
+Responses
+
+Numeric codes + text. A few important codes:
+
+220 — Service ready (welcome).
+
+331 — Username OK, need password.
+
+230 — User logged in (success).
+
+200 — Command okay.
+
+227 — Entering Passive Mode (IP,port).
+
+150 — File status okay; about to open data connection.
+
+226 — Closing data connection; transfer complete.
+
+425 — Can't open data connection.
+
+550 — Requested action not taken (file unavailable).
+
+Data transfer details
+
+Before RETR or LIST the server waits for/creates data connection (depending on PORT/PASV).
+
+Data connection transfers raw bytes (in binary mode). In ASCII mode the server and client may translate line endings.
+
+After transfer server sends 226 or relevant error.
+
+Authentication & security considerations
+
+FTP plaintext credentials on the control channel — insecure. Options:
+
+FTPS: FTP over TLS (explicit vs implicit TLS). Adds complexity: TLS handshake on control and optionally on data channel.
+
+SFTP: Not FTP at all — SSH File Transfer Protocol (uses SSH). Usually preferred over FTP.
+
+Firewalls and NAT complicate active mode (PORT) and passive mode (server must make passive ports available).
+
+Avoid running as root. Constrain server to a chroot/jail or drop privileges after binding.
+
+Architecture of a production server (high level)
+
+Main listener: accepts control connections.
+
+Per-client handler: each control connection spawns a process or thread (or async state machine using epoll) that:
+
+Parses commands, maintains session state (current wd, transfer type, user authenticated, pending passive socket or active target).
+
+For data operations, handles creating/accepting the data socket and streaming file contents.
+
+Concurrency model:
+
+fork() per client — simple, isolates errors; uses more memory.
+
+pthread per client — lighter but must protect shared state.
+
+event loop (epoll/kqueue) — high concurrency, complex.
+
+Filesystem operations: enforce chroot or at least sanitize paths to prevent directory traversal (..).
+
+Logging and resource limits: per-client bandwidth, per-user quotas, timeouts.
