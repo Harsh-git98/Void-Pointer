@@ -8,7 +8,6 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
 #define CONTROL_PORT 2121
 #define MAX_COMMAND_LEN 256
 #define BACKLOG 10
@@ -18,17 +17,20 @@
 char client_ip[64];
 int client_data_port = 0;
 
+
+// BACK TO CLIENT RESPONSE
 void send_response(int client_socket, const char *message) {
     char buffer[512];
     snprintf(buffer, sizeof(buffer), "%s\r\n", message);
     send(client_socket, buffer, strlen(buffer), 0);
 }
 
+
 int authenticate_user(int client_socket, char **username) {
     char command_buffer[MAX_COMMAND_LEN];
     ssize_t bytes_read;
 
-    send_response(client_socket, "220 Welcome to Modular C-FTP Server");
+    send_response(client_socket, "220 Welcome to C-FTP Server");
 
     while (1) {
         memset(command_buffer, 0, MAX_COMMAND_LEN);
@@ -65,8 +67,6 @@ int authenticate_user(int client_socket, char **username) {
     }
 }
 
-
-
 void handle_port(int client_socket, const char *arg) {
     int h1,h2,h3,h4,p1,p2;
     if (sscanf(arg, "%d,%d,%d,%d,%d,%d", 
@@ -81,8 +81,6 @@ void handle_port(int client_socket, const char *arg) {
     send_response(client_socket, "200 PORT command successful.");
 }
 
-
-// Accept data connection
 int open_data_connection() {
     int data_fd;
     struct sockaddr_in data_addr;
@@ -107,6 +105,8 @@ int open_data_connection() {
 
 
 // === Command Handlers ===
+
+// print the current Directory
 void handle_pwd(int client_socket) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
@@ -118,15 +118,25 @@ void handle_pwd(int client_socket) {
     }
 }
 
+// change the directory to path
 void handle_cwd(int client_socket, const char *path) {
-    if (chdir(path) == 0)
-        send_response(client_socket, "250 Directory change successful.");
-    else
+    if (chdir(path) == 0) {
+        char response[512];
+
+        // Get current directory after chdir
+        char cwd[256];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            snprintf(response, sizeof(response), "250 Directory changed to %s", cwd);
+        } else {
+            snprintf(response, sizeof(response), "250 Directory change successful.");
+        }
+
+        send_response(client_socket, response);
+    } else {
         send_response(client_socket, "550 Failed to change directory.");
+    }
 }
-
-
-
+// List all the directories and file
 void handle_list(int client_socket) {
     int data_fd = open_data_connection();
     if (data_fd < 0) {
@@ -139,7 +149,6 @@ void handle_list(int client_socket) {
     if (!dir) {
         send_response(client_socket, "550 Failed to list directory.");
         close(data_fd);
-       // data_fd = -1;
         return;
     }
 
@@ -151,11 +160,9 @@ void handle_list(int client_socket) {
     }
     closedir(dir);
     close(data_fd);
-    send_response(client_socket, "Transfer complete.");
+    send_response(client_socket, "220 Transfer complete.");
 }
-
-
-
+// RETRIVING THE FILE FROM THE REMOTE SERVER
 void handle_retr(int client_socket, const char *filename) {
     int data_fd = open_data_connection();
     if (data_fd < 0) {
@@ -181,33 +188,8 @@ void handle_retr(int client_socket, const char *filename) {
     send_response(client_socket, "226 Transfer complete.");
 }
 
-void handle_stor(int client_socket, const char *filename) {
-    int data_fd = open_data_connection();
-    if (data_fd < 0) {
-        send_response(client_socket, "425 Can't open data connection.");
-        return;
-    }
-    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0) {
-        send_response(client_socket, "550 Cannot create file.");
-        close(data_fd);
-       // data_fd = -1;
-        return;
-    }
-
-    send_response(client_socket, "150 Opening data connection for STOR");
-    char buffer[1024];
-    ssize_t n;
-    while ((n = recv(data_fd, buffer, sizeof(buffer), 0)) > 0) {
-        write(fd, buffer, n);
-    }
-    close(fd);
-    close(data_fd);
-   
-    send_response(client_socket, "226 Upload complete.");
-}
-
 // === Main Command Loop (Active Mode, strict commands) ===
+// ONLY RETRVAL FROM REMOTE SERVER IMPLENTED. IF UPLOAD CALL NOT ALLOWED
 void command_loop(int client_socket) {
     char command_buffer[MAX_COMMAND_LEN];
     ssize_t bytes_read;
@@ -228,7 +210,7 @@ void command_loop(int client_socket) {
         }
         else if (strncasecmp(cmd_line, "CWD", 3) == 0) {
             char *arg = cmd_line + 3;
-            while (*arg == ' ') arg++;  // skip spaces
+            while (*arg == ' ') arg++; 
             if (*arg)
                 handle_cwd(client_socket, arg);
             else
@@ -253,15 +235,18 @@ void command_loop(int client_socket) {
             send_response(client_socket, "221 Goodbye.");
             break;
         }
+         else if (strncasecmp(cmd_line, "EPSV", 4) == 0) {
+            send_response(client_socket, "EPSV call");
+        }
+         else if (strncasecmp(cmd_line, "PASV", 4) == 0) {
+            send_response(client_socket, "PASV call");
+        }
         else {
-            // Any other command is explicitly rejected
             send_response(client_socket, "502 Command not implemented.");
         }
     }
 }
 
-
-// === Handle Client ===
 void handle_client(int client_socket) {
     char *username = NULL;
     int authenticated = authenticate_user(client_socket, &username);

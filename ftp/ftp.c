@@ -17,7 +17,6 @@ int main() {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     int opt = 1;
-
     
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
         perror("socket failed");
