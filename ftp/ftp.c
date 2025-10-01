@@ -5,12 +5,23 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include "implement.c"
+
+
 #define CONTROL_PORT 2121
 #define MAX_COMMAND_LEN 256
 #define BACKLOG 10
 #define AUTH_USERNAME "User"
 #define AUTH_PASSWORD "pass"
+
+void *client_thread(void *arg) {
+    int client_socket = *(int *)arg;
+    free(arg);  
+    handle_client(client_socket);
+    close(client_socket);
+    return NULL;
+}
 
 int main() {
     int server_fd, new_socket;
@@ -42,7 +53,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("FTP Control Server listening on port %d...\n", CONTROL_PORT);
+    printf("FTP C Server listening on port %d...\n", CONTROL_PORT);
 
     while (1) {
         printf("Waiting for a connection...\n");
@@ -52,8 +63,18 @@ int main() {
         }
         printf("New connection accepted from %s:%d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         
+        // Thread for each client
+        int *client_sock = malloc(sizeof(int));
+        *client_sock = new_socket;
 
-        handle_client(new_socket); 
+        pthread_t tid;
+        if (pthread_create(&tid, NULL, client_thread, client_sock) != 0) {
+            perror("pthread_create failed");
+            close(new_socket);
+            free(client_sock);
+        }
+        pthread_detach(tid); 
+
     }
 
     close(server_fd);

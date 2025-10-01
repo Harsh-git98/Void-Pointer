@@ -80,7 +80,7 @@ void handle_port(int client_socket, const char *arg) {
 
     send_response(client_socket, "200 PORT command successful.");
 }
-
+// Creating Active Connection.
 int open_data_connection() {
     int data_fd;
     struct sockaddr_in data_addr;
@@ -94,6 +94,7 @@ int open_data_connection() {
     data_addr.sin_family = AF_INET;
     data_addr.sin_port = htons(client_data_port);
     inet_pton(AF_INET, client_ip, &data_addr.sin_addr);
+    printf("open data connection on: %s %d\n", client_ip, ntohs(data_addr.sin_port));
 
     if (connect(data_fd, (struct sockaddr *)&data_addr, sizeof(data_addr)) < 0) {
         perror("Data connection failed");
@@ -104,7 +105,6 @@ int open_data_connection() {
 }
 
 
-// === Command Handlers ===
 
 // print the current Directory
 void handle_pwd(int client_socket) {
@@ -136,6 +136,7 @@ void handle_cwd(int client_socket, const char *path) {
         send_response(client_socket, "550 Failed to change directory.");
     }
 }
+
 // List all the directories and file
 void handle_list(int client_socket) {
     int data_fd = open_data_connection();
@@ -162,6 +163,7 @@ void handle_list(int client_socket) {
     close(data_fd);
     send_response(client_socket, "220 Transfer complete.");
 }
+
 // RETRIVING THE FILE FROM THE REMOTE SERVER
 void handle_retr(int client_socket, const char *filename) {
     int data_fd = open_data_connection();
@@ -189,7 +191,7 @@ void handle_retr(int client_socket, const char *filename) {
 }
 
 // === Main Command Loop (Active Mode, strict commands) ===
-// ONLY RETRVAL FROM REMOTE SERVER IMPLENTED. IF UPLOAD CALL NOT ALLOWED
+// ONLY RETRVAL FROM REMOTE SERVER IMPLEMENTED. 
 void command_loop(int client_socket) {
     char command_buffer[MAX_COMMAND_LEN];
     ssize_t bytes_read;
@@ -197,6 +199,7 @@ void command_loop(int client_socket) {
     while (1) {
         memset(command_buffer, 0, MAX_COMMAND_LEN);
         bytes_read = recv(client_socket, command_buffer, MAX_COMMAND_LEN - 1, 0);
+       // printf("-FTP Client sends: %s\n",command_buffer);
         if (bytes_read <= 0) break;
 
         command_buffer[bytes_read] = '\0';
@@ -246,7 +249,7 @@ void command_loop(int client_socket) {
         }
     }
 }
-
+    
 void handle_client(int client_socket) {
     char *username = NULL;
     int authenticated = authenticate_user(client_socket, &username);
