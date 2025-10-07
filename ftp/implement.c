@@ -39,17 +39,20 @@ int authenticate_user(int client_socket, char **username) {
 
         command_buffer[bytes_read] = '\0';
         char *cmd_line = strtok(command_buffer, "\r\n");
+      
         if (!cmd_line) continue;
 
         if (strncasecmp(cmd_line, "USER ", 5) == 0) {
             if (*username) free(*username);
             char *user_arg = cmd_line + 5;
+            printf("Authenticate- %s\n", cmd_line);
             while (*user_arg == ' ') user_arg++;
             *username = strdup(user_arg);
             send_response(client_socket, "331 Username OK, need password");
         }
         else if (strncasecmp(cmd_line, "PASS ", 5) == 0) {
             char *pass_arg = cmd_line + 5;
+              printf("Authenticate- %s\n", cmd_line);
             while (*pass_arg == ' ') pass_arg++;
 
             if (*username && strcmp(*username, AUTH_USERNAME) == 0 &&
